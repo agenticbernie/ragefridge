@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#151b25">
+  <title>RageFridge — Kitchen Meltdown</title>
+  <meta name="description" content="A four-seat social kitchen showdown. Keep it cold, keep your cool.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Rye&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to game content</a>
+  <div class="grain-overlay" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="#main-content" aria-label="RageFridge home"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>RAGE<span>FRIDGE</span></span></a>
+    <div class="top-meta"><span class="status-dot"></span><span id="connection-label" aria-live="polite">LOCAL PRACTICE READY</span></div>
+  </header>
+
+  <main id="main-content">
+    <section id="lobby-view" class="lobby-shell">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-rule"></span> A SOCIAL KITCHEN SHOWDOWN</p>
+        <h1>Keep it<br><span>cold.</span><br>Keep your cool.</h1>
+        <p class="hero-lede">Four cooks. One stubborn fridge. Five minutes to freeze the Wagyu Core before somebody's composure boils over.</p>
+        <div class="hero-actions"><button class="button button-primary" id="open-room" type="button"><span>PLAY FREE</span><svg aria-hidden="true"><use href="assets/icons.svg#arrow"></use></svg></button><button class="text-button" id="open-how" type="button"><span class="play-icon" aria-hidden="true">▶</span> HOW IT WORKS</button></div>
+        <div class="trust-line"><span>FREE PROTOTYPE</span><span class="mini-divider"></span><span>NO WALLET OR PAYOUTS</span><span class="mini-divider"></span><span>AUTHORED ACTIONS</span></div>
+      </div>
+      <section class="hero-art" aria-label="Illustration of the Rage-O-Matic fridge in a warm mid-century kitchen">
+        <div class="art-note note-left"><span>01</span><b>THE RAGE-O-MATIC</b><small>KEEP THE CORE FROZEN</small></div>
+        <div class="art-note note-right"><span>02</span><b>WATCH YOUR BP</b><small>IT'S CARTOON BP, NOT MEDICAL DATA</small></div>
+        <img src="assets/kitchen.svg" alt="Original illustrated kitchen with a large enamel fridge and a steak inside" class="kitchen-art">
+        <div class="art-caption"><span class="caption-star">✦</span><span>ORIGINAL MID-CENTURY KITCHEN ART<br><small>NO FAMOUS CARTOONS, JUST GOOD INK</small></span></div>
+      </section>
+      <div class="hero-ribbon"><span class="ribbon-dot"></span><span>THIS IS A FREE PLAY PROTOTYPE</span><span class="ribbon-dot"></span><span>NO REAL VALUE · NO AI CLAIMS · NO DEPLOYMENT</span></div>
+    </section>
+
+    <div id="room-dialog" class="dialog-backdrop is-hidden" aria-hidden="true">
+      <section class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="room-title" aria-describedby="room-description" tabindex="-1">
+        <button class="dialog-close" id="close-room" aria-label="Close room dialog" type="button">×</button>
+        <div class="dialog-kicker">STEP 01 / FIND YOUR KITCHEN</div>
+        <h2 id="room-title">Gather the crew.</h2>
+        <p id="room-description" class="dialog-lede">Create a four-seat room for friends, or join one already simmering.</p>
+        <label class="field-label" for="player-name">Your kitchen name</label><input class="field" id="player-name" maxlength="18" autocomplete="nickname" placeholder="e.g. Chef Butterfingers">
+        <div class="room-choice"><button class="choice-card is-selected" id="create-choice" type="button"><span class="choice-icon"><svg aria-hidden="true"><use href="assets/icons.svg#room"></use></svg></span><b>CREATE A ROOM</b><small>Host the kitchen and invite three players.</small></button><button class="choice-card" id="join-choice" type="button"><span class="choice-icon"><svg aria-hidden="true"><use href="assets/icons.svg#arrow"></use></svg></span><b>JOIN A ROOM</b><small>Enter a room code from your host.</small></button></div>
+        <div id="room-code-field" class="is-hidden"><label class="field-label" for="room-code">Room code</label><input class="field code-field" id="room-code" maxlength="6" inputmode="text" placeholder="ABCD" autocomplete="off"></div>
+        <button class="button button-primary button-wide" id="room-submit" type="button"><span>CREATE ROOM</span><svg aria-hidden="true"><use href="assets/icons.svg#arrow"></use></svg></button>
+        <button class="demo-link" id="demo-submit" type="button">or play a <strong>single-browser bot demo</strong></button>
+        <p id="room-error" class="form-error" role="alert"></p>
+        <p class="dialog-footnote"><span aria-hidden="true">⊙</span> This prototype has no wallet, payout, transaction, or settlement flow.</p>
+      </section>
+    </div>
+
+    <div id="info-dialog" class="dialog-backdrop is-hidden" aria-hidden="true">
+      <section class="dialog-card info-card" role="dialog" aria-modal="true" aria-labelledby="info-title" tabindex="-1">
+        <button class="dialog-close" id="close-info" aria-label="Close information dialog" type="button">×</button>
+        <div class="dialog-kicker" id="info-kicker">KITCHEN NOTES</div>
+        <h2 id="info-title">How it works</h2>
+        <div id="info-content" class="info-content"></div>
+      </section>
+    </div>
+
+    <section id="game-view" class="game-shell is-hidden">
+      <section id="lobby-panel" class="room-lobby panel-surface">
+        <div class="room-lobby-head"><div><p class="eyebrow"><span class="eyebrow-rule"></span> KITCHEN ASSEMBLY</p><h2>Get four in the fridge.</h2><p class="muted">The host starts when every seat is ready. Share the code with your crew.</p></div><div class="room-code-block"><span>ROOM CODE</span><strong id="room-code-display">----</strong><button id="copy-code" type="button" class="icon-button" aria-label="Copy room code"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg></button></div></div>
+        <div class="lobby-layout"><div class="seat-grid" id="lobby-seats"></div><aside class="rules-card"><div class="rules-card-title"><svg aria-hidden="true"><use href="assets/icons.svg#card"></use></svg> BEFORE YOU PLAY</div><ul><li><b>ROASTS</b> are authored tiers: −2/−4/−6°C, with rising BP costs.</li><li><b>COMPLIMENT</b> adds 2°C, helps its target, and costs you 1 BP.</li><li><b>REST</b> recovers BP for 4 seconds. <b>DEFLECT</b> protects only yourself.</li></ul><button class="text-button rules-link" id="lobby-rules" type="button">READ FULL RULES</button><div class="test-credit-badge"><span>FREE PROTOTYPE</span><b>NO PAYOUTS</b><small>Role and outcome weights only</small></div></aside></div>
+        <div class="lobby-footer"><div class="ready-copy"><span class="ready-pip"></span><span id="ready-summary">Waiting for seats</span></div><div class="lobby-actions"><button class="button button-secondary" id="leave-room" type="button">LEAVE ROOM</button><button class="button button-primary" id="start-match" type="button" disabled><span>START MATCH</span><svg aria-hidden="true"><use href="assets/icons.svg#arrow"></use></svg></button></div></div>
+      </section>
+
+      <section id="active-panel" class="active-stage is-hidden">
+        <div class="hud-bar"><div class="hud-brand"><span class="mini-mark"></span> RAGE<span>FRIDGE</span></div><div class="hud-clock"><svg aria-hidden="true"><use href="assets/icons.svg#clock"></use></svg><b id="timer">05:00</b><span id="phase-label">KITCHEN MELTDOWN</span></div><div class="hud-tools"><span class="connection-pill"><i></i><span id="hud-connection" aria-live="polite">CONNECTED</span></span><button class="hud-tool" id="read-status" type="button">STATUS SUMMARY</button><button class="hud-tool stop-tool" id="safety-stop" type="button"><svg aria-hidden="true"><use href="assets/icons.svg#stop"></use></svg> SAFETY STOP</button></div></div>
+        <div class="game-grid">
+          <aside class="players-column"><div class="column-label">THE CREW <span id="crew-count">0 / 4</span></div><div id="player-list" class="player-list"></div><div class="crew-note"><span class="note-icon">✦</span><span>Public BP is shown as a band.<br>Your exact BP stays private.</span></div></aside>
+          <section class="fridge-column">
+            <div class="temperature-strip"><div class="temperature-label"><svg aria-hidden="true"><use href="assets/icons.svg#snow"></use></svg><span>SHARED TEMPERATURE</span></div><strong id="temperature">+20°<small>C</small></strong><div id="temperature-state" class="state-pill warm"><span class="state-dot"></span> WARMING</div></div>
+            <div class="fridge-stage"><img src="assets/kitchen.svg" alt="The Rage-O-Matic fridge" class="kitchen-art kitchen-game"><div class="fridge-vfx" id="fridge-vfx" aria-hidden="true"></div><div class="fridge-readout"><span id="fridge-readout-label">CORE CONDITION</span><b id="fridge-readout-value">WORRIED</b></div></div>
+            <div class="hold-meter"><div class="hold-head"><span><svg aria-hidden="true"><use href="assets/icons.svg#snow"></use></svg> COLD HOLD</span><b id="hold-value">0 <small>/ 10 SEC</small></b></div><div class="hold-track"><div id="hold-fill"></div><div class="hold-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><p id="hold-note">Win requires the final 10 seconds at or below −10°C.</p></div>
+          </section>
+          <aside class="events-column"><div class="column-label">KITCHEN TELEGRAM <span>LIVE</span></div><div class="events-log" id="events-log" aria-live="polite"></div><button class="log-button" id="open-log" type="button">OPEN EVENT LOG <svg aria-hidden="true"><use href="assets/icons.svg#arrow"></use></svg></button></aside>
+        </div>
+        <section class="control-dock"><div class="you-banner"><div class="you-avatar" id="you-avatar"><span>YOU</span></div><div class="you-info"><span>YOU ARE PLAYING AS</span><b id="you-name">—</b></div><div class="bp-dial"><div class="bp-dial-top"><svg aria-hidden="true"><use href="assets/icons.svg#bolt"></use></svg> YOUR BP</div><b id="your-bp">10</b><small>/ 100</small></div><div class="bp-band" id="your-band">CALM</div><button class="role-peek" id="role-peek" type="button" aria-describedby="role-help">HOLD TO PEEK ROLE <span aria-hidden="true">◉</span></button><span id="role-help" class="sr-only">Press and hold, or hold Enter or Space, to reveal your private role. Releasing hides it.</span></div>
+          <div class="action-row"><div class="target-control"><label for="target-select">TARGET</label><select id="target-select" aria-describedby="action-status"></select></div><div class="action-buttons"><button class="action-button roast" data-action="roast" data-tier="1" type="button"><span class="action-key">1</span><svg aria-hidden="true"><use href="assets/icons.svg#snow"></use></svg><b>ROAST I</b><small>−2°C · +4 / +2 BP</small></button><button class="action-button roast" data-action="roast" data-tier="2" type="button"><span class="action-key">2</span><svg aria-hidden="true"><use href="assets/icons.svg#snow"></use></svg><b>ROAST II</b><small>−4°C · +7 / +4 BP</small></button><button class="action-button roast" data-action="roast" data-tier="3" type="button"><span class="action-key">3</span><svg aria-hidden="true"><use href="assets/icons.svg#snow"></use></svg><b>ROAST III</b><small>−6°C · +11 / +6 BP</small></button><button class="action-button compliment" data-action="compliment" type="button"><span class="action-key">C</span><svg aria-hidden="true"><use href="assets/icons.svg#heart"></use></svg><b>COMPLIMENT</b><small>+2°C · +1 / −3 BP</small></button><button class="action-button rest" data-action="rest" type="button"><span class="action-key">R</span><svg aria-hidden="true"><use href="assets/icons.svg#cup"></use></svg><b>REST</b><small>4 SEC · −3 BP/SEC</small></button><button class="action-button deflect" data-action="deflect" type="button"><span class="action-key">F</span><svg aria-hidden="true"><use href="assets/icons.svg#shield"></use></svg><b>DEFLECT</b><small>SELF · NEXT ROAST BP ×0.5</small></button></div></div>
+          <p id="action-status" class="action-status" role="status">Roast and compliment: 6s cooldown. Rest: 18s cooldown. Deflect: 12s cooldown. All actions use authored, fixed values.</p>
+          <div class="action-guidance"><b>AUTHORED ACTIONS ONLY</b><span>Captions are not submitted or scored in this prototype. No AI or free-text scoring is used.</span></div>
+        </section>
+      </section>
+
+      <section id="result-panel" class="result-stage is-hidden"><div class="result-card"><div class="result-stamp" id="result-stamp">MATCH COMPLETE</div><p class="eyebrow"><span class="eyebrow-rule"></span> THE KITCHEN HAS SPOKEN</p><h2 id="result-title">A COLD SNAP.</h2><p id="result-reason" class="result-reason">The team held the core below the line.</p><div id="result-players" class="result-players"></div><div class="conservation"><span>RESULT BASIS</span><b>ROLE &amp; MATCH STATE</b><small>No payout, settlement, custody, or wallet is connected.</small></div><div class="result-actions"><button class="button button-primary" id="play-again" type="button"><span>LEAVE &amp; NEW ROOM</span><svg aria-hidden="true"><use href="assets/icons.svg#arrow"></use></svg></button><button class="button button-secondary" id="result-log" type="button">VIEW EVENT LOG</button></div><p class="result-disclaimer">A refresh loses this seat because resume credentials remain only in this open page's memory.</p></div></section>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </section>
+  </main>
+  <script src="app.js" defer></script>
+</body>
+</html>

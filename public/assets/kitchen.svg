@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 552" fill="none">
+  <defs>
+    <linearGradient id="wall" x2=".92" y2="1" gradientUnits="objectBoundingBox"><stop stop-color="#406454"/><stop offset="1" stop-color="#213c34"/></linearGradient>
+    <linearGradient id="enamel" x2="1" y2=".8" gradientUnits="objectBoundingBox"><stop stop-color="#fff9cb"/><stop offset=".47" stop-color="#f2df9d"/><stop offset="1" stop-color="#cbad6b"/></linearGradient>
+    <linearGradient id="metal" x2=".9" y2="1" gradientUnits="objectBoundingBox"><stop stop-color="#b9cf9c"/><stop offset="1" stop-color="#5b8a76"/></linearGradient>
+    <linearGradient id="glass" x2=".5" y2="1" gradientUnits="objectBoundingBox"><stop stop-color="#416259"/><stop offset="1" stop-color="#254139"/></linearGradient>
+    <radialGradient id="lamp"><stop stop-color="#f6c875" stop-opacity=".46"/><stop offset="1" stop-color="#f6c875" stop-opacity="0"/></radialGradient>
+    <pattern id="tiles" width="61" height="35" patternUnits="userSpaceOnUse"><path d="M0 1h61M0 34h61M29 1v33" stroke="#c6d0a2" opacity=".18" stroke-width="2"/></pattern>
+    <pattern id="grain" width="28" height="25" patternUnits="userSpaceOnUse"><path d="M2 5h1m9 11h1m12 3h1M7 23h.5M20 6h1" stroke="#fbebba" opacity=".25"/><path d="M6 9h1m11 1h1m6 13h1M2 19h1m12 4h1" stroke="#111e17" opacity=".32"/></pattern>
+    <pattern id="ice" width="40" height="46" patternUnits="userSpaceOnUse"><path d="M0 0l20 11 20-11M20 11v22L0 46m20-13 20 13" stroke="#c5e0bf" opacity=".12"/></pattern>
+    <clipPath id="floor"><path d="M0 450h640v102H0z"/></clipPath>
+  </defs>
+  <!-- Plaster, tilework, and checkerboard laid in perspective. -->
+  <path d="M0 0h640v552H0z" fill="url(#wall)"/>
+  <path d="M0 172h640v259H0z" fill="#33574b"/><path d="M0 172h640v259H0z" fill="url(#tiles)"/>
+  <path d="M0 166h640v9H0zM0 425h640v25H0z" fill="#1f3830"/><path d="M0 450h640v102H0z" fill="#79694e"/>
+  <g clip-path="url(#floor)" stroke="#273f34" stroke-width="2">
+    <path d="M0 452h640M0 472h640M0 499h640M0 535h640"/><path d="M29 450-85 552m182-102L6 552m151-102L98 552m120-102-23 102m85-102v102m62-102 28 102m35-102 57 102m5-102 93 102m-30-102 124 102m-64-102 140 102"/>
+    <path fill="#9b8360" d="M0 452h27L5 472H0zm95 0h61l-11 20H78zm123 0h62v20h-67zm124 0h63l11 20h-69zm125 0h63l24 20h-66zm125 0h48v20h-18zM5 472h73l-24 27H0v-23zm140 0h68l-6 27h-78zm135 0h67l8 27h-75zm136 0h72l24 27h-80zm138 0h68l18 14v13h-55zM0 499h53l-32 36H0zm128 0h79l-8 36h-92zm152 0h75l10 36h-85zm152 0h80l33 36h-93zm153 0h55v36h-12z"/>
+  </g>
+  <ellipse cx="341" cy="197" rx="268" ry="201" fill="url(#lamp)"/>
+  <!-- Wall fixtures, sideboard and stovetop. -->
+  <path d="M0 115h152v9H0z" fill="#bb955a" stroke="#1c332b" stroke-width="4"/><path d="M34 124v17l29-17M125 124v17l-25-17" stroke="#172e27" stroke-width="4" stroke-linecap="round"/>
+  <path d="M11 112V91q0-9 8-13h28q8 4 8 13v21z" fill="#a67545" stroke="#20362d" stroke-width="3"/><rect x="15" y="73" width="35" height="10" rx="4" fill="#e2b869" stroke="#20362d" stroke-width="3"/><path d="M23 94h19v13H23z" fill="#e1c58c"/>
+  <path d="M75 114V85q7-4 10-11h22q3 7 10 11v29z" fill="#b4bd84" stroke="#20362d" stroke-width="3"/><path d="M85 70h22v9H85z" fill="#d7ad68" stroke="#20362d" stroke-width="3"/><path d="M86 89h20v13H86z" fill="#efdb9b"/>
+  <path d="M0 334h206v102l-24 21H0z" fill="#99744b" stroke="#203328" stroke-width="5"/><path d="M0 356h174v100H0z" fill="#a77d4e" stroke="#203328" stroke-width="4"/><path d="M0 383h174M60 356v100m56-100v100" stroke="#4f4932" stroke-width="3"/><path d="M15 367h29m30 0h28m31 0h21" stroke="#e2b876" stroke-width="4" stroke-linecap="round"/>
+  <path d="M0 329h189l22 9-30 16H0z" fill="#dab27c" stroke="#23372d" stroke-width="5"/>
+  <path d="M7 305h127l-13-12H18z" fill="#354738" stroke="#1b3027" stroke-width="4"/><path d="M14 306h125v23H14z" fill="#c3b478" stroke="#1b3027" stroke-width="4"/><path d="M30 317h1m20 0h1m20 0h1m20 0h1" stroke="#253c31" stroke-width="8" stroke-linecap="round"/>
+  <path d="M27 257h58l-6 29q-4 8-22 8t-23-8z" fill="#a9553a" stroke="#273c2e" stroke-width="4"/><path d="M23 258q0-11 34-11t33 11H23z" fill="#d09257" stroke="#273c2e" stroke-width="4"/><path d="M52 247v-5h13m20 24 15-3M47 231q-11-11 1-20t0-19m23 39q-9-9 0-16t0-17" stroke="#c2ceac" stroke-opacity=".64" stroke-width="3" stroke-linecap="round"/>
+  <path d="M521 110h119v94H522q-7-52-1-94z" fill="#976e47" stroke="#253a2d" stroke-width="5"/><path d="M540 122h89v64h-89z" fill="#bc935c" stroke="#6d5b40" stroke-width="3"/><path d="M542 173h18" stroke="#ece0a7" stroke-width="4" stroke-linecap="round"/>
+  <path d="M499 332h141v125h-130l-22-28V349z" fill="#99744b" stroke="#23372d" stroke-width="5"/><path d="M509 355h131v102H516z" fill="#a97c4d" stroke="#23372d" stroke-width="4"/><path d="M509 382h131m-73 0v74" stroke="#504b34" stroke-width="3"/><path d="M534 370h29m36 0h29" stroke="#eed198" stroke-width="4" stroke-linecap="round"/><path d="M499 330h141v24H510l-22-13z" fill="#deb789" stroke="#23372d" stroke-width="5"/>
+  <path d="M575 329l-12-45h49l-11 45z" fill="#af6a49" stroke="#20362d" stroke-width="4"/><path d="M584 291q-21-14-24-40 22 9 29 29-1-37 20-49 3 24-13 51 15-25 29-21-8 20-38 29z" fill="#a2af73" stroke="#2d4a38" stroke-width="3"/>
+  <!-- Spotlight and original enamel refrigerator. -->
+  <path d="M339 0v42" stroke="#23372d" stroke-width="5"/><path d="M270 70q10-29 69-29t69 29z" fill="#ba864f" stroke="#263c2f" stroke-width="4"/><ellipse cx="339" cy="71" rx="68" ry="10" fill="#f5d58d" stroke="#263c2f" stroke-width="4"/>
+  <path d="M160 174q27-86 144-86 151-7 190 128" stroke="#e9c77f" stroke-width="1.5" stroke-dasharray="3 8" opacity=".6"/>
+  <ellipse cx="325" cy="476" rx="180" ry="25" fill="#20352b" opacity=".62"/>
+  <path d="M213 447h29v31q-1 8-12 8t-14-8zm166 0h25l-3 29q-1 7-12 7t-11-7z" fill="#334232" stroke="#1b2f25" stroke-width="5"/>
+  <path d="M217 152l43-18 138 4q51 2 56 52l-1 232q-2 35-39 44l-39 9-168-24z" fill="url(#metal)" stroke="#192c22" stroke-width="6"/><path d="M414 175q18 5 26 20l-1 223q0 24-15 33" stroke="#e2e4b0" stroke-opacity=".52" stroke-width="3"/>
+  <path d="M178 190q0-43 45-47l150-2q42 1 43 41l-2 247q0 39-37 43l-155 1q-45 0-44-44z" fill="url(#enamel)" stroke="#1c3025" stroke-width="6"/>
+  <path d="M189 195q1-40 38-42l144-2q31 0 33 31" stroke="#fff4c8" stroke-width="3" stroke-linecap="round"/><path d="M179 231q111-4 236-5m-235 10 234-5" stroke="#594f36" stroke-width="3"/>
+  <path d="M200 416q0 38 28 41l141 1" stroke="#fff3c2" stroke-width="2" stroke-linecap="round"/>
+  <path d="M229 253q69-6 143-2 22 1 23 24l-1 99q-1 24-21 27l-141 2q-25-1-25-26l1-103q0-18 21-21z" fill="#86a888" stroke="#253c2f" stroke-width="5"/>
+  <path d="M232 263q78-4 139-2 14 1 14 17l-1 93q0 18-17 20l-133 2q-17 0-17-19l1-94q0-15 14-17z" fill="url(#glass)" stroke="#263d32" stroke-width="3"/>
+  <path d="M232 268h138q10 0 10 12v86q0 20-16 20H232q-10 0-10-10v-96q0-10 10-12z" fill="url(#ice)"/>
+  <path d="M222 297l55-31m-55 46 80-46m31 117 46-29" stroke="#ddedc7" stroke-opacity=".23" stroke-width="2"/>
+  <ellipse cx="300" cy="347" rx="58" ry="19" fill="#1a3028" opacity=".65"/>
+  <path d="M251 345q41-29 90-10l13 10-36 14-53-2z" fill="#a1b690" stroke="#253a2d" stroke-width="3"/>
+  <path d="M250 337q-3-14 18-28 8-7 32-9 34-2 49 14 7 8-5 20-11 13-39 14-44 2-55-11z" fill="#b65a49" stroke="#372e2b" stroke-width="4"/>
+  <path d="M258 333q12 11 48 10 23-1 35-12" stroke="#f0b67b" stroke-width="3" stroke-linecap="round"/>
+  <path d="M262 322q12 0 18-9 6-7 21-8m-30 30q13-7 28-4 14 2 20-8 8-11 20-4m-54-8q4 6 12 5t11-8m13 25 8 3" stroke="#f4c996" stroke-width="2.3" stroke-linecap="round"/>
+  <path d="M239 288v-13m-6 6h12m107 78v12m-6-6h12" stroke="#e6e9b9" stroke-width="2" stroke-linecap="round"/>
+  <path d="M199 197q8-6 36-3l1 7q-2 4-33 5-8-1-4-9zm-1 222q8-5 39-5l1 8q-2 5-35 5-8 0-5-8z" fill="#f2c878" stroke="#554a35" stroke-width="3"/>
+  <path d="M250 175h98v31h-98z" fill="#36574a" stroke="#574c35" stroke-width="2.4"/><path d="M257 180h84v21h-84z" stroke="#b7b68a" stroke-width=".7"/>
+  <text x="299" y="195" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="13" letter-spacing="2.1" fill="#f1dc97">RAGE-O-MATIC</text>
+  <path d="M463 245q20-2 21 17l-1 102a20 20 0 1 1-31 0l1-103q1-14 10-16z" fill="#dad4a7" stroke="#273c2f" stroke-width="4"/><path d="M465 263v106" stroke="#a75940" stroke-width="6" stroke-linecap="round"/><path d="M464 312v58" stroke="#ab533c" stroke-width="8" stroke-linecap="round"/><circle cx="465" cy="376" r="8" fill="#ab533c"/>
+  <path d="M474 270h5m-5 16h5m-5 16h5m-5 16h5m-5 16h5m-5 16h5" stroke="#645b44" stroke-width="1.3"/>
+  <path d="M151 221v-26m-13 13h26m-22-9 18 18m0-18-18 18m374 21v-31m-15 16h30m-25-10 20 20m0-20-20 20m-374 98v-17m-8 9h16m349 109v-18m-9 9h18" stroke="#f5cc79" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+  <path d="M0 0h640v552H0z" fill="url(#grain)" opacity=".53"/>
+</svg>
