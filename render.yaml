@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: ragefridge
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.1
+      - key: CHAIN_ENABLED
+        value: "false"

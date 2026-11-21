@@ -18,6 +18,18 @@
     latest: null,
     events: [],
     roomMode: 'create',
+    chainConfig: null,
+    walletAuth: null,
+    chainProgress: null,
+    chainProgressKey: '',
+    chainProgressAt: 0,
+    chainInspecting: false,
+    chainTxBusy: false,
+    chainPendingTx: null,
+    chainMessage: '',
+    chainError: '',
+    walletAddressBound: null,
+    walletBindingInvalid: false,
     roomReturnFocus: null,
     infoReturnFocus: null,
     roleHeld: false,
@@ -85,7 +97,8 @@
     state.roomReturnFocus = null;
   }
   function openInfoDialog(title, kicker, content) {
-    state.infoReturnFocus = document.activeElement;
+    historyGeneration++;
+    if ($('#info-dialog').classList.contains('is-hidden')) state.infoReturnFocus = document.activeElement;
     $('#info-title').textContent = title;
     $('#info-kicker').textContent = kicker;
     $('#info-content').innerHTML = content;
@@ -94,6 +107,7 @@
     focusInDialog($('#info-dialog'));
   }
   function closeInfoDialog() {
+    historyGeneration++;
     $('#info-dialog').classList.add('is-hidden');
     $('#info-dialog').setAttribute('aria-hidden', 'true');
     if (state.infoReturnFocus instanceof HTMLElement) state.infoReturnFocus.focus();
@@ -117,6 +131,9 @@
   }
 
   function authoredRulesMarkup() {
+    const chainDisclosure = state.latest?.mode === 'fuji'
+      ? '<p class="info-note">This room uses nonredeemable RFC test credits. Wallet transactions are separate, require Fuji test AVAX gas, and may be refundable if the match is void or times out. No real-value payout is offered.</p>'
+      : '<p class="info-note">Actions use fixed, authored values. Free text and AI scoring are not part of this prototype. Safety Stop ends an active free match without payout or settlement.</p>';
     return `
       <p>At the five-minute buzzer, the shared fridge must have spent the <b>last 10 seconds at or below −10°C</b> to earn a cold win. An earlier cold hold does not carry forward. Your BP is a cartoon game meter, not medical data.</p>
       <h3>Authored actions</h3>
@@ -132,7 +149,7 @@
       <ul><li>Your role card is private. Press and hold the role button to peek; releasing, blurring, or moving away hides it.</li><li>Choose a living target before a roast or compliment. Deflect has no target and protects only your own seat.</li></ul>
       <h3>Fair-play limits</h3>
       <ul><li>Roast and compliment actions have a 6-second cooldown.</li><li>The same roast tier cannot cool twice within 30 seconds.</li><li>A player can be roast-targeted twice within 10 seconds; further roasts show as protected and have no cooling or target-BP effect.</li><li>Back-to-back roasts on the same target within 12 seconds cool at half strength.</li></ul>
-      <p class="info-note">Actions use fixed, authored values. Free text and AI scoring are not part of this prototype. Safety Stop ends an active match with no payout or settlement.</p>`;
+      ${chainDisclosure}`;
   }
   function openRules() { openInfoDialog('How it works', 'KITCHEN RULES', authoredRulesMarkup()); }
   function eventLogMarkup() {
@@ -153,6 +170,11 @@
     $('#create-choice').classList.toggle('is-selected', !joining);
     $('#join-choice').classList.toggle('is-selected', joining);
     $('#room-code-field').classList.toggle('is-hidden', !joining);
+    $('#wallet-mode-field').classList.toggle('is-hidden', !state.chainConfig?.enabled);
+    $('#wallet-mode-field').disabled = !state.chainConfig?.enabled || !window.ethereum || Boolean(state.pending);
+    $('#wallet-mode').disabled = !state.chainConfig?.enabled || !window.ethereum || Boolean(state.pending);
+    if (!window.ethereum) $('#wallet-mode-note').textContent = 'No injected wallet is available in this browser. Free play remains available.';
+    else $('#wallet-mode-note').textContent = 'Optional. Connect an EOA to authenticate and use nonredeemable RFC test credits. Each wallet transaction needs Fuji test AVAX for gas.';
     $('#room-submit span').textContent = joining ? 'JOIN ROOM' : 'CREATE ROOM';
   }
   function setRoomBusy(busy) {
@@ -162,6 +184,8 @@
     $('#join-choice').disabled = busy;
     $('#player-name').disabled = busy;
     $('#room-code').disabled = busy;
+    $('#wallet-mode-field').disabled = busy || !state.chainConfig?.enabled || !window.ethereum;
+    $('#wallet-mode').disabled = busy || !state.chainConfig?.enabled || !window.ethereum;
     if (busy) $('#room-submit span').textContent = state.roomMode === 'join' ? 'JOINING…' : 'CREATING…';
     else $('#room-submit span').textContent = state.roomMode === 'join' ? 'JOIN ROOM' : 'CREATE ROOM';
   }
@@ -171,7 +195,7 @@
   function sanitizedCode() {
     return $('#room-code').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
   }
-  function roomSubmit(demo = false) {
+  async function roomSubmit(demo = false) {
     if (state.pending) return;
     const name = sanitizedName();
     const code = sanitizedCode();
@@ -187,13 +211,40 @@
       $('#room-code').focus();
       return;
     }
+    const paid = !demo && $('#wallet-mode').checked;
     leaveSocket({ notifyServer: true, keepView: true });
     state.latest = null;
     state.events = [];
-    state.pending = { kind: 'room', mode: state.roomMode };
+    const pending = { kind: 'room', mode: state.roomMode };
+    state.pending = pending;
     setRoomBusy(true);
     $('#room-error').textContent = '';
-    openSocket({ type: demo ? 'create' : state.roomMode, name, code: state.roomMode === 'join' ? code : undefined, demo });
+    try {
+      if (paid) {
+        if (!state.chainConfig?.enabled) throw new Error('Fuji wallet rooms are not enabled on this server.');
+        state.walletAuth = await window.RageFridgeWallet.authenticate(state.chainConfig);
+        state.walletAddressBound = state.walletAuth.address;
+        state.walletBindingInvalid = false;
+      }
+      if (state.pending !== pending) return;
+      const payload = { type: demo ? 'create' : state.roomMode, name, code: state.roomMode === 'join' ? code : undefined, demo };
+      if (paid) {
+        payload.paid = true;
+        payload.authToken = state.walletAuth.token;
+      }
+      openSocket(payload);
+    } catch (error) {
+      if (state.pending !== pending) return;
+      state.pending = null;
+      state.walletAuth = null;
+      state.walletAddressBound = null;
+      state.walletBindingInvalid = false;
+      window.RageFridgeWallet?.clearAuthentication();
+      setRoomBusy(false);
+      setConnection(false, 'WALLET SIGN-IN FAILED');
+      $('#room-error').textContent = error?.message || 'Wallet sign-in failed. Free play is still available.';
+      openRoomDialog(false);
+    }
   }
 
   function clearReconnectTimer() {
@@ -219,6 +270,14 @@
     }
     state.session = null;
     state.pending = null;
+    state.walletAuth = null;
+    state.walletAddressBound = null;
+    state.walletBindingInvalid = false;
+    state.chainProgress = null;
+    state.chainProgressKey = '';
+    state.chainMessage = '';
+    state.chainError = '';
+    window.RageFridgeWallet?.clearAuthentication();
     if (!keepView) setConnection(false, 'OFFLINE');
   }
   function openSocket(payload, { resume = false } = {}) {
@@ -258,10 +317,14 @@
       openRoomDialog(false);
       return;
     }
-    if (state.latest?.phase === 'lobby') {
+    if (state.latest?.phase === 'lobby' && state.latest?.mode !== 'fuji') {
       state.session = null;
       state.latest = null;
       state.events = [];
+      state.walletAuth = null;
+      state.walletAddressBound = null;
+      state.walletBindingInvalid = false;
+      window.RageFridgeWallet?.clearAuthentication();
       setConnection(false, 'LOBBY SEAT RELEASED');
       setView('home');
       $('#room-error').textContent = 'The lobby connection closed, so that seat was released. Create or join a room again.';
@@ -322,6 +385,10 @@
       const detail = message.message || 'The kitchen rejected that request.';
       if (state.pending?.kind === 'room') {
         state.pending = null;
+        state.walletAuth = null;
+        state.walletAddressBound = null;
+        state.walletBindingInvalid = false;
+        window.RageFridgeWallet?.clearAuthentication();
         setRoomBusy(false);
         setConnection(false, 'ROOM REQUEST FAILED');
         $('#room-error').textContent = detail;
@@ -374,6 +441,8 @@
       setView('result');
       renderResult(message.state);
     }
+    renderChain(message.state);
+    void refreshChainProgress();
   }
   function send(payload) {
     if (!state.socket || state.socket.readyState !== WebSocket.OPEN || !state.connected || state.reconnecting) {
@@ -389,23 +458,331 @@
     }
   }
 
+  async function loadChainConfig() {
+    try {
+      const response = await fetch('/api/chain/config', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Chain configuration unavailable (${response.status}).`);
+      const config = await response.json();
+      state.chainConfig = config?.enabled === true && Number(config.chainId) === 43113
+        ? config
+        : { enabled: false, chainId: 43113 };
+      if (state.chainConfig.enabled) state.chainPendingTx = window.RageFridgeWallet.pendingTransaction(state.chainConfig);
+    } catch (_) {
+      state.chainConfig = { enabled: false, chainId: 43113 };
+    }
+    setRoomMode(state.roomMode);
+    $('#open-history').classList.toggle('is-hidden', !state.chainConfig.enabled);
+  }
+
+  let historyAuth = null;
+  let historyLoading = false;
+  let historyGeneration = 0;
+  async function openHistory(offset = 0) {
+    if (historyLoading || state.chainTxBusy) return;
+    historyLoading = true;
+    openInfoDialog('Fuji claim history', 'PRIVATE WALLET HISTORY', '<p role="status">Sign in with your Fuji wallet to load your matches. Free-play seats are not stored here.</p>');
+    const generation = historyGeneration;
+    const isCurrent = () => generation === historyGeneration;
+    try {
+      const auth = historyAuth || await window.RageFridgeWallet.authenticate(state.chainConfig);
+      if (!isCurrent()) return;
+      historyAuth = auth;
+      const response = await fetch(`/api/wallet/matches?offset=${offset}`, {
+        headers: { Authorization: `Bearer ${auth.token}` }, cache: 'no-store',
+      });
+      if (!isCurrent()) return;
+      if (!response.ok) {
+        if (response.status === 401) historyAuth = null;
+        throw new Error(`History unavailable (${response.status}); sign in again to retry.`);
+      }
+      const page = await response.json();
+      if (!isCurrent()) return;
+      $('#info-content').innerHTML = `<p>Wallet ${escapeHtml(shortAddress(auth.address))}. Test credits have no real value. The contract is authoritative; a stored status is not a confirmed payment.</p><p id="history-status" role="status"></p><ol id="history-list"></ol><button id="history-refresh" class="button button-secondary" type="button">REFRESH</button>`;
+      const list = $('#history-list');
+      const pending = window.RageFridgeWallet.pendingTransaction(state.chainConfig) || state.chainPendingTx;
+      if (pending) {
+        $('#history-status').textContent = `Unconfirmed transaction: ${pending.hash}. Do not resubmit. This browser saves submitted hashes when local storage is available; always verify in your wallet too.`;
+        const check = document.createElement('button');
+        check.type = 'button'; check.className = 'button button-secondary'; check.textContent = 'CHECK PENDING TRANSACTION';
+        check.addEventListener('click', async () => {
+          check.disabled = true;
+          try {
+            const result = await window.RageFridgeWallet.receipt(state.chainConfig, pending.hash);
+            if (!isCurrent()) return;
+            if (!result.pending && state.chainPendingTx?.hash === pending.hash) state.chainPendingTx = null;
+            $('#history-status').textContent = result.pending ? `Still pending: ${pending.hash}` : result.success ? `Confirmed: ${pending.hash}` : `Reverted: ${pending.hash}. No action completed.`;
+          } catch (error) {
+            if (isCurrent()) $('#history-status').textContent = error.message;
+          } finally { check.disabled = false; }
+        });
+        $('#info-content').append(check);
+      }
+      if (!page.matches.length) list.insertAdjacentHTML('beforebegin', '<p>No recorded matches for this wallet on this server.</p>');
+      for (const match of page.matches) {
+        const item = document.createElement('li');
+        const label = document.createElement('p');
+        label.textContent = `${match.matchId} · ${match.state} · ${formatRFC(match.stake)} RFC stake`;
+        const claim = document.createElement('button');
+        claim.type = 'button';
+        claim.className = 'button button-secondary';
+        claim.textContent = 'CHECK / CLAIM';
+        claim.addEventListener('click', () => { void claimFromHistory(match, claim); });
+        item.append(label, claim);
+        list.append(item);
+      }
+      $('#history-refresh').addEventListener('click', () => { void openHistory(offset); });
+      if (page.nextOffset !== null) {
+        const older = document.createElement('button');
+        older.type = 'button'; older.className = 'button button-secondary'; older.textContent = 'OLDER MATCHES';
+        older.addEventListener('click', () => { void openHistory(page.nextOffset); });
+        $('#info-content').append(older);
+      }
+      if (offset > 0) {
+        const newest = document.createElement('button');
+        newest.type = 'button'; newest.className = 'button button-secondary'; newest.textContent = 'NEWEST MATCHES';
+        newest.addEventListener('click', () => { void openHistory(0); });
+        $('#info-content').append(newest);
+      }
+    } catch (error) {
+      if (isCurrent()) {
+        $('#info-content').textContent = error?.message || 'Could not load wallet history.';
+        const retry = document.createElement('button');
+        retry.type = 'button'; retry.className = 'button button-secondary'; retry.textContent = 'RETRY SIGN-IN';
+        retry.addEventListener('click', () => { void openHistory(offset); });
+        $('#info-content').append(retry);
+      }
+    } finally { historyLoading = false; }
+  }
+
+  async function claimFromHistory(match, button) {
+    if (!historyAuth || state.chainTxBusy) return;
+    const address = historyAuth.address;
+    const generation = historyGeneration;
+    const notice = (message) => { const status = $('#history-status'); if (status && generation === historyGeneration) status.textContent = message; };
+    state.chainTxBusy = true;
+    button.disabled = true;
+    try {
+      if (state.chainPendingTx) {
+        const checked = await window.RageFridgeWallet.receipt(state.chainConfig, state.chainPendingTx.hash);
+        if (checked.pending) throw new Error(`A transaction is still pending: ${state.chainPendingTx.hash}. Do not resubmit.`);
+        state.chainPendingTx = null;
+      }
+      const progress = await window.RageFridgeWallet.inspect(state.chainConfig, match, address);
+      if (generation !== historyGeneration || !historyAuth) return;
+      if (progress.claimed) { notice('This match has already been claimed.'); return; }
+      if (!['SETTLED', 'REFUNDABLE'].includes(progress.matchState)) {
+        notice(`On-chain state: ${progress.matchState}. Claims wait for settlement or timeout/refund; refresh later.`);
+        return;
+      }
+      if (!window.confirm(`Claim test-credit ${progress.matchState === 'REFUNDABLE' ? 'refund' : 'payout'} for ${match.matchId}? This is a Fuji transaction and requires test AVAX gas.`)) return;
+      const result = await window.RageFridgeWallet.transact('claim', state.chainConfig, match, address, notice);
+      if (result.pending) {
+        state.chainPendingTx = { action: 'claim', hash: result.hash };
+        notice(`Transaction pending: ${result.hash}. Check its receipt before retrying.`);
+      } else notice(`Claim confirmed on Fuji: ${result.hash}`);
+    } catch (error) { notice(error?.message || 'Claim failed; no payment is assumed.'); }
+    finally { state.chainTxBusy = false; button.disabled = false; renderChain(state.latest); }
+  }
+
   function renderLobby(room) {
     $('#room-code-display').textContent = room.code || '----';
     const players = Array.isArray(room.players) ? room.players : [];
     const seats = $('#lobby-seats');
     seats.innerHTML = '';
     players.forEach((player, index) => {
-      seats.insertAdjacentHTML('beforeend', `<article class="seat-card ready"><img src="assets/cast.svg" alt="" class="seat-svg" data-seat="${index}"><span class="seat-number">SEAT 0${index + 1}</span><div><p class="seat-name">${escapeHtml(player.name || 'Kitchen guest')}</p><span class="seat-status">${player.connected === false ? 'RECONNECTING' : 'READY'}</span></div>${player.bot ? '<span class="seat-bot">BOT DEMO</span>' : ''}</article>`);
+      const wallet = typeof player.wallet === 'string' ? `<small class="seat-wallet">${escapeHtml(shortAddress(player.wallet))}</small>` : '';
+      const seatStatus = player.connected === false ? 'RECONNECTING' : room.mode === 'fuji' ? 'CONNECTED' : 'READY';
+      seats.insertAdjacentHTML('beforeend', `<article class="seat-card ready"><img src="assets/cast.svg" alt="" class="seat-svg" data-seat="${index}"><span class="seat-number">SEAT 0${index + 1}</span><div><p class="seat-name">${escapeHtml(player.name || 'Kitchen guest')}</p><span class="seat-status">${seatStatus}</span>${wallet}</div>${player.bot ? '<span class="seat-bot">BOT DEMO</span>' : ''}</article>`);
     });
     for (let index = players.length; index < 4; index += 1) seats.insertAdjacentHTML('beforeend', `<article class="seat-card empty"><span class="seat-number">SEAT 0${index + 1}</span><div><p class="seat-name">OPEN SEAT</p><span class="seat-status">INVITE A PLAYER</span></div></article>`);
     $$('.seat-svg', seats).forEach((image, index) => { image.outerHTML = seatArt(index); });
     const count = players.length;
-    const canStart = room.canStart !== undefined ? room.canStart : Boolean(room.hostId && room.hostId === room.you?.id && count >= 4);
-    $('#ready-summary').textContent = count >= 4 ? 'All seats ready — host can start' : `${count} of 4 seats filled — waiting for ${4 - count}`;
+    const canStart = room.canStart === true;
+    if (room.mode === 'fuji') {
+      const deposited = Math.max(0, Math.min(4, Number(room.chain?.depositedCount) || 0));
+      const ready = Math.max(0, Math.min(4, Number(room.chain?.readyCount) || 0));
+      $('#ready-summary').textContent = count >= 4
+        ? `${deposited}/4 test-credit deposits · ${ready}/4 confirmed ready`
+        : `${count} of 4 seats filled — waiting for ${4 - count}`;
+      const badge = $('.test-credit-badge');
+      if (badge) badge.innerHTML = '<span>FUJI TEST CREDITS</span><b>NO REAL VALUE</b><small>Claims/refunds follow chain state</small>';
+    } else {
+      $('#ready-summary').textContent = count >= 4 ? 'All seats ready — host can start' : `${count} of 4 seats filled — waiting for ${4 - count}`;
+      const badge = $('.test-credit-badge');
+      if (badge) badge.innerHTML = '<span>FREE PROTOTYPE</span><b>NO PAYOUTS</b><small>Role and outcome weights only</small>';
+    }
     $('#start-match').disabled = !canStart;
     if (room.demo) {
       $('#start-match').disabled = false;
       $('#ready-summary').textContent = 'Single-browser bot demo — all seats ready';
+    }
+  }
+  function shortAddress(address) {
+    return /^0x[0-9a-fA-F]{40}$/.test(address) ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'Wallet seat';
+  }
+  function formatRFC(raw) {
+    if (typeof raw !== 'string' || !/^\d+$/.test(raw)) return 'unknown';
+    try {
+      const formatted = window.ethers?.formatUnits ? window.ethers.formatUnits(BigInt(raw), 18) : raw;
+      return formatted.includes('.') ? formatted.replace(/0+$/, '').replace(/\.$/, '') : formatted;
+    } catch (_) { return raw; }
+  }
+  function renderChain(room = state.latest) {
+    const panel = $('#chain-panel');
+    const chain = room?.chain;
+    if (!chain) {
+      panel.classList.add('is-hidden');
+      return;
+    }
+    panel.classList.remove('is-hidden');
+    const roomState = String(chain.state || 'CREATING').toUpperCase();
+    const stake = formatRFC(chain.stake);
+    $('#chain-panel-title').textContent = room.phase === 'ended' ? 'Match chain status' : 'Test-credit lobby';
+    const deposits = Math.max(0, Math.min(4, Number(chain.depositedCount) || 0));
+    const ready = Math.max(0, Math.min(4, Number(chain.readyCount) || 0));
+    $('#chain-summary').textContent = `${roomState.replaceAll('_', ' ')} · ${stake === 'unknown' ? 'test-credit stake not yet available' : `${stake} RFC test-credit stake`} · deposits ${deposits}/4 · ready ${ready}/4 · Avalanche Fuji · chain 43113`;
+    $('#chain-error').textContent = state.chainError || chain.error || '';
+    $('#chain-tx-status').textContent = state.chainMessage || (state.chainPendingTx
+      ? `Unconfirmed wallet transaction: ${state.chainPendingTx.hash}. Check its receipt before retrying.`
+      : chain.txHash ? `Latest chain transaction: ${chain.txHash}` : '');
+    ['reauth', 'mint', 'approve', 'deposit', 'ready', 'claim'].forEach((name) => {
+      const button = $(`#chain-${name}`);
+      button.classList.add('is-hidden');
+      button.disabled = state.chainTxBusy || Boolean(state.chainPendingTx);
+    });
+    if (!state.walletAddressBound) {
+      $('#chain-error').textContent = 'This wallet seat is not authenticated in this page. Leave and rejoin with the Fuji test-room option enabled.';
+      return;
+    }
+    if (state.walletBindingInvalid) {
+      $('#chain-error').textContent = 'Wallet account or network changed. Re-authenticate with the same EOA before continuing; another wallet cannot use this seat.';
+      $('#chain-reauth').classList.remove('is-hidden');
+      $('#chain-reauth').disabled = state.chainTxBusy;
+      return;
+    }
+    if (!window.RageFridgeWallet || !state.chainConfig?.enabled) {
+      $('#chain-error').textContent = 'Fuji wallet support is unavailable on this page. Do not send transactions from another interface using room data.';
+      return;
+    }
+    if (!chain.matchId || !state.chainProgress || state.chainInspecting) return;
+    const progress = state.chainProgress;
+    const isFunding = room.phase === 'lobby' && progress.matchState === 'FUNDING';
+    const busy = state.chainTxBusy || Boolean(state.chainPendingTx);
+    if (progress.seatIndex >= 0 && ['SETTLED', 'REFUNDABLE'].includes(progress.matchState) && !progress.claimed) {
+      $('#chain-claim').classList.remove('is-hidden');
+      $('#chain-claim').disabled = busy;
+      $('#chain-claim').textContent = progress.matchState === 'REFUNDABLE' ? 'CLAIM TEST-CREDIT REFUND' : 'CLAIM TEST-CREDIT RESULT';
+      $('#chain-tx-status').textContent = state.chainMessage || `Connected EOA ${shortAddress(progress.address)} · claim is a separate wallet transaction.`;
+    } else if (isFunding && progress.seatIndex >= 0) {
+      if (!progress.deposited && progress.balance < progress.stake) $('#chain-mint').classList.remove('is-hidden');
+      else if (!progress.deposited && progress.allowance !== progress.stake) $('#chain-approve').classList.remove('is-hidden');
+      else if (!progress.deposited) $('#chain-deposit').classList.remove('is-hidden');
+      else if (!progress.ready) $('#chain-ready').classList.remove('is-hidden');
+      $('#chain-tx-status').textContent = state.chainMessage || `Connected EOA ${shortAddress(progress.address)} · exact allowance only · no server custody.`;
+    } else if (progress.seatIndex < 0) {
+      $('#chain-error').textContent = 'The connected EOA is not listed as a recipient for this match. No transaction is available.';
+    } else if (progress.matchState === 'RESULT_PENDING') {
+      const end = Number(progress.inspectionEnds) || Number(chain.inspectionEnds);
+      $('#chain-tx-status').textContent = `Result inspection is in progress${end ? ` until ${new Date(end * 1000).toLocaleTimeString()}` : ''}. Claims are unavailable until the on-chain state is terminal.`;
+    } else if (progress.matchState === 'FUNDING' && progress.seatIndex >= 0 && room.phase !== 'lobby') {
+      $('#chain-tx-status').textContent = 'The on-chain match is still funding; the game server has not opened gameplay.';
+    }
+  }
+  async function refreshChainProgress(force = false) {
+    const room = state.latest;
+    const chain = room?.chain;
+    const address = state.walletAddressBound;
+    if (!chain || !chain.matchId || !address || state.walletBindingInvalid || !state.chainConfig?.enabled || !window.RageFridgeWallet) {
+      state.chainProgress = null;
+      state.chainProgressKey = '';
+      renderChain(room);
+      return;
+    }
+    const key = `${chain.matchId}:${address.toLowerCase()}`;
+    if (!force && state.chainProgressKey === key && Date.now() - state.chainProgressAt < 5_000) {
+      renderChain(room);
+      return;
+    }
+    if (state.chainInspecting) return;
+    state.chainInspecting = true;
+    state.chainProgressKey = key;
+    renderChain(room);
+    try {
+      const progress = await window.RageFridgeWallet.inspect(state.chainConfig, chain, address);
+      if (state.latest?.chain?.matchId === chain.matchId && state.walletAddressBound?.toLowerCase() === address.toLowerCase() && !state.walletBindingInvalid) {
+        state.chainProgress = progress;
+        state.chainError = '';
+        state.chainProgressAt = Date.now();
+        if (state.chainPendingTx) {
+          const checked = await window.RageFridgeWallet.receipt(state.chainConfig, state.chainPendingTx.hash);
+          if (!checked.pending) {
+            state.chainPendingTx = null;
+            state.chainMessage = checked.success ? 'Transaction confirmed on Fuji.' : 'Transaction reverted on Fuji.';
+          }
+        }
+      }
+    } catch (error) {
+      if (state.latest?.chain?.matchId === chain.matchId) {
+        state.chainProgress = null;
+        state.chainError = error?.message || 'Could not read Fuji match status.';
+      }
+    } finally {
+      state.chainInspecting = false;
+      renderChain(state.latest);
+    }
+  }
+  async function reauthenticateRoomWallet() {
+    if (!state.chainConfig?.enabled || !state.walletAddressBound || state.chainTxBusy) return;
+    state.chainTxBusy = true;
+    renderChain(state.latest);
+    try {
+      const auth = await window.RageFridgeWallet.authenticate(state.chainConfig);
+      if (auth.address.toLowerCase() !== state.walletAddressBound.toLowerCase()) {
+        window.RageFridgeWallet.clearAuthentication();
+        throw new Error('The wallet must be the same EOA that joined this seat.');
+      }
+      state.walletAuth = auth;
+      state.walletBindingInvalid = false;
+      state.chainProgress = null;
+      state.chainProgressAt = 0;
+      state.chainMessage = 'Wallet re-authenticated. Fuji state is being refreshed.';
+      await refreshChainProgress(true);
+    } catch (error) {
+      state.walletAuth = null;
+      state.walletBindingInvalid = true;
+      state.chainError = error?.message || 'Wallet re-authentication failed.';
+    } finally {
+      state.chainTxBusy = false;
+      renderChain(state.latest);
+    }
+  }
+  async function runChainAction(action) {
+    const chain = state.latest?.chain;
+    const address = state.walletAddressBound;
+    if (!chain || !address || state.walletBindingInvalid || state.chainTxBusy || state.chainPendingTx) return;
+    state.chainTxBusy = true;
+    state.chainMessage = '';
+    state.chainError = '';
+    $('#chain-error').textContent = '';
+    renderChain(state.latest);
+    try {
+      const result = await window.RageFridgeWallet.transact(action, state.chainConfig, chain, address, (message) => {
+        state.chainMessage = message;
+        $('#chain-tx-status').textContent = message;
+      });
+      if (result.pending) {
+        state.chainPendingTx = { action, hash: result.hash };
+        state.chainMessage = `${result.reason || 'Transaction is still pending.'} Check transaction ${result.hash}; do not submit it again.`;
+      } else {
+        state.chainMessage = `Confirmed on Fuji · ${result.hash}`;
+        await refreshChainProgress(true);
+      }
+    } catch (error) {
+      state.chainMessage = '';
+      state.chainError = error?.message || 'Wallet transaction failed or was cancelled. No success is assumed.';
+    } finally {
+      state.chainTxBusy = false;
+      renderChain(state.latest);
     }
   }
   function playerClass(bpBand) { return ['calm', 'active', 'simmering', 'danger', 'critical', 'eliminated'].includes(bpBand) ? bpBand : 'active'; }
@@ -549,6 +926,10 @@
       const result = outcomePlayers.find((item) => item.id === player.id) || {};
       return `<div class="result-player">${seatArt(index)}<b>${escapeHtml(player.name || 'Kitchen guest')}</b><small>${escapeHtml(result.role || player.role || 'ROLE HIDDEN')}</small><span class="outcome-weight">${escapeHtml(outcomeWeight(result, player, type))}</span></div>`;
     }).join('');
+    const resultNote = $('.conservation small');
+    if (resultNote) resultNote.textContent = room.chain
+      ? 'Fuji test-credit custody is separate; use the chain panel above to check or claim it.'
+      : 'No payout, settlement, custody, or wallet is connected.';
   }
 
   function actionProblem(action) {
@@ -610,6 +991,7 @@
   }
 
   $('#open-room').addEventListener('click', openRoomDialog);
+  $('#open-history').addEventListener('click', () => { void openHistory(); });
   $('#close-room').addEventListener('click', () => closeRoomDialog());
   $('#room-dialog').addEventListener('click', (event) => { if (event.target === $('#room-dialog')) closeRoomDialog(); });
   $('#close-info').addEventListener('click', closeInfoDialog);
@@ -627,8 +1009,29 @@
     try { await navigator.clipboard.writeText(code); showToast(`Room code ${code} copied.`); } catch (_) { showToast(`Room code: ${code}`); }
   });
   $('#start-match').addEventListener('click', () => { if (send({ type: 'start' })) showToast('The kitchen is opening. Keep your cool.'); });
+  $('#chain-reauth').addEventListener('click', () => { void reauthenticateRoomWallet(); });
+  ['mint', 'approve', 'deposit', 'ready', 'claim'].forEach((action) => {
+    $(`#chain-${action}`).addEventListener('click', () => { void runChainAction(action); });
+  });
+  window.addEventListener('ragewallet:invalidated', (event) => {
+    historyAuth = null;
+    historyGeneration++;
+    if ($('#info-kicker').textContent === 'PRIVATE WALLET HISTORY' && !$('#info-dialog').classList.contains('is-hidden')) {
+      $('#info-content').textContent = 'Wallet identity changed. Close and reopen history to sign in again.';
+    }
+    if (!state.walletAddressBound) return;
+    state.walletAuth = null;
+    state.walletBindingInvalid = true;
+    state.chainProgress = null;
+    state.chainError = event.detail?.reason || 'Wallet identity changed. Re-authenticate before continuing.';
+    renderChain(state.latest);
+  });
   $('#safety-stop').addEventListener('click', () => {
-    if (window.confirm('Safety Stop ends this room in a technical void. No score, payout, or settlement is created. Continue?')) send({ type: 'stop' });
+    const paidRoom = state.latest?.mode === 'fuji';
+    const prompt = paidRoom
+      ? 'Safety Stop voids the game and starts the Fuji test-credit refund path. Refund claims wait for chain state; no winner payout is awarded. Continue?'
+      : 'Safety Stop ends this room in a technical void. No score, payout, or settlement is created. Continue?';
+    if (window.confirm(prompt)) send({ type: 'stop' });
   });
   $('#read-status').addEventListener('click', () => {
     const room = state.latest;
@@ -652,6 +1055,8 @@
   $('#role-peek').addEventListener('pointercancel', concealRole);
   $('#role-peek').addEventListener('pointerleave', concealRole);
   $('#role-peek').addEventListener('blur', concealRole);
+  window.addEventListener('blur', concealRole);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) concealRole(); });
   $('#role-peek').addEventListener('keydown', (event) => {
     if ((event.key === 'Enter' || event.key === ' ') && !event.repeat) { event.preventDefault(); revealRole(); }
   });
@@ -692,4 +1097,5 @@
 
   setRoomMode('create');
   setView('home');
+  void loadChainConfig();
 })();

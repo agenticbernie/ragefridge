@@ -16,7 +16,7 @@
   <div class="grain-overlay" aria-hidden="true"></div>
   <header class="topbar">
     <a class="brand" href="#main-content" aria-label="RageFridge home"><span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span><span>RAGE<span>FRIDGE</span></span></a>
-    <div class="top-meta"><span class="status-dot"></span><span id="connection-label" aria-live="polite">LOCAL PRACTICE READY</span></div>
+    <div class="top-meta"><button id="open-history" class="text-button is-hidden" type="button">FUJI CLAIM HISTORY</button><span class="status-dot"></span><span id="connection-label" aria-live="polite">LOCAL PRACTICE READY</span></div>
   </header>
 
   <main id="main-content">
@@ -46,10 +46,14 @@
         <label class="field-label" for="player-name">Your kitchen name</label><input class="field" id="player-name" maxlength="18" autocomplete="nickname" placeholder="e.g. Chef Butterfingers">
         <div class="room-choice"><button class="choice-card is-selected" id="create-choice" type="button"><span class="choice-icon"><svg aria-hidden="true"><use href="assets/icons.svg#room"></use></svg></span><b>CREATE A ROOM</b><small>Host the kitchen and invite three players.</small></button><button class="choice-card" id="join-choice" type="button"><span class="choice-icon"><svg aria-hidden="true"><use href="assets/icons.svg#arrow"></use></svg></span><b>JOIN A ROOM</b><small>Enter a room code from your host.</small></button></div>
         <div id="room-code-field" class="is-hidden"><label class="field-label" for="room-code">Room code</label><input class="field code-field" id="room-code" maxlength="6" inputmode="text" placeholder="ABCD" autocomplete="off"></div>
+        <fieldset id="wallet-mode-field" class="wallet-mode-field is-hidden">
+          <label for="wallet-mode"><input id="wallet-mode" type="checkbox"> <span>Join a Fuji test-token room</span></label>
+          <p id="wallet-mode-note">Optional. Connect an EOA to authenticate and use nonredeemable RFC test credits. Each wallet transaction needs Fuji test AVAX for gas.</p>
+        </fieldset>
         <button class="button button-primary button-wide" id="room-submit" type="button"><span>CREATE ROOM</span><svg aria-hidden="true"><use href="assets/icons.svg#arrow"></use></svg></button>
         <button class="demo-link" id="demo-submit" type="button">or play a <strong>single-browser bot demo</strong></button>
         <p id="room-error" class="form-error" role="alert"></p>
-        <p class="dialog-footnote"><span aria-hidden="true">⊙</span> This prototype has no wallet, payout, transaction, or settlement flow.</p>
+        <p class="dialog-footnote"><span aria-hidden="true">⊙</span> Free rooms need no wallet. Optional Fuji rooms use test-only RFC with no real value.</p>
       </section>
     </div>
 
@@ -63,6 +67,17 @@
     </div>
 
     <section id="game-view" class="game-shell is-hidden">
+      <section id="chain-panel" class="chain-panel is-hidden" aria-labelledby="chain-panel-title" aria-live="polite">
+        <div class="chain-panel-copy"><p class="chain-eyebrow">OPTIONAL FUJI TEST ROOM</p><h2 id="chain-panel-title">Test-credit lobby</h2><p id="chain-summary">Checking the room's chain status…</p><p id="chain-warning">RFC is a nonredeemable test token with no real value. Wallet transactions require Fuji test AVAX for gas; never approve or sign a 7702 delegation.</p><p id="chain-error" class="chain-error" role="status"></p><p id="chain-tx-status" class="chain-tx-status" role="status"></p></div>
+        <div class="chain-panel-actions" aria-label="Fuji test-credit actions">
+          <button class="button button-secondary chain-action is-hidden" id="chain-reauth" type="button">RE-AUTHENTICATE WALLET</button>
+          <button class="button button-secondary chain-action is-hidden" id="chain-mint" type="button">MINT EXACT STAKE</button>
+          <button class="button button-secondary chain-action is-hidden" id="chain-approve" type="button">APPROVE EXACT STAKE</button>
+          <button class="button button-secondary chain-action is-hidden" id="chain-deposit" type="button">JOIN &amp; DEPOSIT</button>
+          <button class="button button-secondary chain-action is-hidden" id="chain-ready" type="button">MARK READY</button>
+          <button class="button button-primary chain-action is-hidden" id="chain-claim" type="button">CLAIM TEST CREDITS / REFUND</button>
+        </div>
+      </section>
       <section id="lobby-panel" class="room-lobby panel-surface">
         <div class="room-lobby-head"><div><p class="eyebrow"><span class="eyebrow-rule"></span> KITCHEN ASSEMBLY</p><h2>Get four in the fridge.</h2><p class="muted">The host starts when every seat is ready. Share the code with your crew.</p></div><div class="room-code-block"><span>ROOM CODE</span><strong id="room-code-display">----</strong><button id="copy-code" type="button" class="icon-button" aria-label="Copy room code"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg></button></div></div>
         <div class="lobby-layout"><div class="seat-grid" id="lobby-seats"></div><aside class="rules-card"><div class="rules-card-title"><svg aria-hidden="true"><use href="assets/icons.svg#card"></use></svg> BEFORE YOU PLAY</div><ul><li><b>ROASTS</b> are authored tiers: −2/−4/−6°C, with rising BP costs.</li><li><b>COMPLIMENT</b> adds 2°C, helps its target, and costs you 1 BP.</li><li><b>REST</b> recovers BP for 4 seconds. <b>DEFLECT</b> protects only yourself.</li></ul><button class="text-button rules-link" id="lobby-rules" type="button">READ FULL RULES</button><div class="test-credit-badge"><span>FREE PROTOTYPE</span><b>NO PAYOUTS</b><small>Role and outcome weights only</small></div></aside></div>
@@ -91,6 +106,8 @@
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
     </section>
   </main>
+  <script src="/vendor/ethers.umd.min.js" defer></script>
+  <script src="wallet.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>

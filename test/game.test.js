@@ -25,6 +25,17 @@ test('lobby requires four seats and only host can start', () => {
   assert.equal(game.snapshot('a').you.role, 'chef');
 });
 
+test('wallet lobby start waits for four on-chain deposits and ready confirmations', () => {
+  const game = new Game('CHAIN1');
+  game.paid = true;
+  game.chain = { state: 'FUNDING', depositedCount: 4, readyCount: 3 };
+  for (const [id, name] of [['a', 'A'], ['b', 'B'], ['c', 'C'], ['d', 'D']]) game.addPlayer(id, name);
+  assert.equal(game.snapshot('a').canStart, false);
+  game.chain.readyCount = 4;
+  assert.equal(game.snapshot('a').canStart, true);
+  assert.equal(game.snapshot('b').canStart, false);
+});
+
 test('authored roast queues deterministic cooling and BP costs', () => {
   const game = room();
   assert.equal(game.submit('a', { action: 'roast', target: 'b', tier: 2 }), null);
@@ -142,4 +153,56 @@ test('disconnected seats cannot be targeted, while already queued actions still 
   tick(queued);
   assert.equal(queued.events.at(-1).type, 'roast');
   assert.equal(queued.events.at(-1).target, 'b');
+});
+
+test('passive recovery starts at three seconds and Rest lasts exactly four ticks', () => {
+  const game = room();
+  const player = game.getPlayer('a');
+  player.bp = 3000;
+  player.lastIncrease = 0;
+  tick(game);
+  tick(game);
+  assert.equal(player.bp, 3000);
+  tick(game);
+  assert.equal(player.bp, 2950);
+  assert.equal(game.submit('a', { action: 'rest' }), null);
+  for (let index = 0; index < 4; index++) tick(game);
+  assert.equal(player.bp, 1550);
+  tick(game);
+  assert.equal(player.bp, 1500);
+});
+
+test('the net event cap bounds cooling without reducing speaker costs', () => {
+  const game = room();
+  assert.equal(game.submit('a', { action: 'roast', target: 'b', tier: 3 }), null);
+  assert.equal(game.submit('c', { action: 'roast', target: 'd', tier: 3 }), null);
+  tick(game);
+  assert.equal(game.temperature, 1420);
+  assert.equal(game.getPlayer('a').bp, 2100);
+  assert.equal(game.getPlayer('c').bp, 2100);
+  assert.equal(game.totalReceipts, 2);
+});
+
+test('scored requests close at second 298 and overheat takes priority at the final tick', () => {
+  const game = room();
+  game.elapsed = 298;
+  assert.match(game.submit('a', { action: 'roast', target: 'b', tier: 1 }), /too late/);
+  game.elapsed = 299;
+  game.coldHold = 10;
+  game.temperature = 9990;
+  tick(game);
+  assert.equal(game.outcome.type, 'sabotage');
+  assert.equal(game.outcome.reason, 'overheat');
+});
+
+test('Stoic requires strict majority and peak BP at most twenty for the special weight', () => {
+  for (const [receipts, total, peakBP, expected] of [[6, 12, 2000, 125], [7, 13, 2000, 200], [7, 13, 2001, 125]]) {
+    const game = room();
+    const stoic = game.getPlayer('d');
+    stoic.receipts = receipts;
+    stoic.peakBP = peakBP;
+    game.totalReceipts = total;
+    game.finish('cold', 'coldHold');
+    assert.equal(game.outcome.players.find((player) => player.id === 'd').weight, expected);
+  }
 });

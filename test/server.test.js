@@ -4,6 +4,7 @@ import http from 'node:http';
 import net from 'node:net';
 import { once } from 'node:events';
 import WebSocket from 'ws';
+import { Wallet } from 'ethers';
 import { createServer, shuffleRoles } from '../server/index.js';
 import { ROLES } from '../server/game.js';
 
@@ -21,9 +22,10 @@ test.after(async () => {
   await server.close();
 });
 
-function connect(origin = base) {
+function connect(origin = base, websocketOrigin = origin) {
   return new Promise((resolve, reject) => {
-    const socket = new WebSocket(`${origin.replace('http', 'ws')}/ws`);
+    const options = websocketOrigin ? { origin: websocketOrigin } : undefined;
+    const socket = new WebSocket(`${origin.replace('http', 'ws')}/ws`, options);
     const rejectOpen = (error) => { socket.off('open', resolve); reject(error); };
     socket.once('open', () => { socket.off('error', rejectOpen); resolve(socket); });
     socket.once('error', rejectOpen);
@@ -55,6 +57,46 @@ function next(socket, predicate = () => true, timeout = 2000) {
 
 function send(socket, message) { socket.send(JSON.stringify(message)); }
 
+test('room-attempt limits span sockets from the same IP and expire with the server clock', async (t) => {
+  let time = 0;
+  const isolated = createServer({ now: () => time, roomAttemptsPerMinute: 2 });
+  await isolated.listen();
+  t.after(() => isolated.close());
+  const origin = `http://127.0.0.1:${isolated.httpServer.address().port}`;
+  const sockets = [await connect(origin), await connect(origin), await connect(origin)];
+  for (const socket of sockets.slice(0, 2)) {
+    const response = next(socket, (message) => message.type === 'error');
+    send(socket, { type: 'join', code: 'MISSING' });
+    assert.match((await response).message, /Room not found/);
+  }
+  let response = next(sockets[2], (message) => message.type === 'error');
+  send(sockets[2], { type: 'create', name: 'Blocked' });
+  assert.match((await response).message, /rate limit/);
+  time = 60_000;
+  response = next(sockets[2], (message) => message.type === 'session');
+  send(sockets[2], { type: 'create', name: 'Allowed' });
+  await response;
+  await closeAll(sockets);
+});
+
+test('room capacity and per-IP connection caps reject excess work without failing health checks', async (t) => {
+  const isolated = createServer({ maxRooms: 1, maxConnectionsPerIp: 2 });
+  await isolated.listen();
+  t.after(() => isolated.close());
+  const origin = `http://127.0.0.1:${isolated.httpServer.address().port}`;
+  const first = await connect(origin);
+  let response = next(first, (message) => message.type === 'session');
+  send(first, { type: 'create', name: 'First' });
+  await response;
+  const second = await connect(origin);
+  response = next(second, (message) => message.type === 'error');
+  send(second, { type: 'create', name: 'Second' });
+  assert.match((await response).message, /capacity/);
+  await assert.rejects(connect(origin), /429/);
+  assert.equal((await fetch(`${origin}/healthz`)).status, 200);
+  await closeAll([first, second]);
+});
+
 function nonCanonicalTokenAlias(token) {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
   const index = alphabet.indexOf(token.at(-1));
@@ -83,6 +125,24 @@ function request(pathname) {
     request.once('error', reject);
     request.end();
   });
+}
+
+async function signIn(origin, wallet) {
+  const challengeResponse = await fetch(`${origin}/api/wallet/challenge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: origin },
+    body: JSON.stringify({ address: wallet.address }),
+  });
+  assert.equal(challengeResponse.status, 200);
+  const challenge = await challengeResponse.json();
+  const signature = await wallet.signMessage(challenge.message);
+  const sessionResponse = await fetch(`${origin}/api/wallet/session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: origin },
+    body: JSON.stringify({ address: wallet.address, challengeId: challenge.challengeId, signature }),
+  });
+  assert.equal(sessionResponse.status, 200);
+  return sessionResponse.json();
 }
 
 function rawHttpRequest(target, upgrade = false) {
@@ -145,9 +205,122 @@ test('health endpoint, malformed static path, and websocket handshake keep the s
   assert.match(await rawHttpRequest('http://%'), /^HTTP\/1\.1 400 /);
   const response = await fetch(`${base}/healthz`);
   assert.equal(response.status, 200);
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('x-frame-options'), 'DENY');
+  assert.match(response.headers.get('content-security-policy'), /default-src 'self'/);
   assert.deepEqual(await response.json(), { ok: true, rooms: 0 });
+  const chainConfig = await fetch(`${base}/api/chain/config`);
+  assert.equal(chainConfig.status, 200);
+  assert.deepEqual(await chainConfig.json(), { enabled: false, chainId: 43113 });
+  const ethersAsset = await fetch(`${base}/vendor/ethers.umd.min.js`);
+  assert.equal(ethersAsset.status, 200);
+  assert.match(ethersAsset.headers.get('content-type'), /javascript/);
+  assert.ok((await ethersAsset.text()).length > 100_000);
   const socket = await connect();
   await close(socket);
+  await assert.rejects(connect(base, 'https://attacker.example'), /Unexpected server response: 403/);
+});
+
+test('wallet challenge and session routes match the browser API and bind the signed address', async () => {
+  const wallet = Wallet.createRandom();
+  const origin = base;
+  const challengeResponse = await fetch(`${base}/api/wallet/challenge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: origin },
+    body: JSON.stringify({ address: wallet.address }),
+  });
+  assert.equal(challengeResponse.status, 200);
+  const challenge = await challengeResponse.json();
+  assert.match(challenge.challengeId, /^[a-f0-9]{64}$/);
+  const signature = await wallet.signMessage(challenge.message);
+  const sessionResponse = await fetch(`${base}/api/wallet/session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: origin },
+    body: JSON.stringify({ address: wallet.address, challengeId: challenge.challengeId, signature }),
+  });
+  assert.equal(sessionResponse.status, 200);
+  const session = await sessionResponse.json();
+  assert.equal(session.address, wallet.address);
+  assert.match(session.token, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal((await fetch(`${base}/api/chain/challenge`, { method: 'POST' })).status, 404);
+});
+
+test('wallet APIs reject cross-origin requests and non-JSON request bodies', async () => {
+  const crossOrigin = await fetch(`${base}/api/wallet/challenge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://attacker.example' },
+    body: JSON.stringify({ address: Wallet.createRandom().address }),
+  });
+  assert.equal(crossOrigin.status, 403);
+  const wrongContentType = await fetch(`${base}/api/wallet/challenge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain', Origin: base },
+    body: '{}',
+  });
+  assert.equal(wrongContentType.status, 400);
+});
+
+test('wallet history requires a valid bearer session and derives the address only from that session', async (t) => {
+  const alice = Wallet.createRandom();
+  const bob = Wallet.createRandom();
+  const seen = [];
+  let time = Date.now();
+  const isolated = createServer({ port: 0, now: () => time, chain: {
+    publicConfig: () => ({ enabled: true }),
+    listMatches: (address, offset) => { seen.push({ address, offset }); return { matches: [{ owner: address }], nextOffset: null }; },
+    tick: async () => {}, close: async () => {},
+  } });
+  await isolated.listen();
+  t.after(() => isolated.close());
+  const origin = `http://127.0.0.1:${isolated.httpServer.address().port}`;
+  assert.equal((await fetch(`${origin}/api/wallet/matches`, { headers: { Origin: origin } })).status, 401);
+  const auth = await signIn(origin, alice);
+  const headers = { Origin: origin, Authorization: `Bearer ${auth.token}` };
+  const result = await fetch(`${origin}/api/wallet/matches?address=${bob.address}&offset=50`, { headers });
+  assert.equal(result.status, 200);
+  assert.equal(result.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await result.json(), { matches: [{ owner: alice.address }], nextOffset: null });
+  assert.deepEqual(seen, [{ address: alice.address, offset: 50 }]);
+  assert.equal((await fetch(`${origin}/api/wallet/matches?offset=-1`, { headers })).status, 400);
+  assert.equal((await fetch(`${origin}/api/wallet/matches`, {
+    headers: { ...headers, Origin: 'https://attacker.example' },
+  })).status, 403);
+  time += 30 * 60_000;
+  assert.equal((await fetch(`${origin}/api/wallet/matches`, { headers })).status, 401);
+  assert.equal(seen.length, 1);
+});
+
+test('Fuji room joins enforce the configured wallet allowlist after wallet sign-in', async () => {
+  const allowedWallet = Wallet.createRandom();
+  const rejectedWallet = Wallet.createRandom();
+  const chain = {
+    publicConfig: () => ({ enabled: true, chainId: 43113, token: '0x0000000000000000000000000000000000000001',
+      escrow: '0x0000000000000000000000000000000000000002', stake: '1000', inviteRequired: true }),
+    isAllowedPlayer: (address) => address?.toLowerCase() === allowedWallet.address.toLowerCase(),
+    prepare: async () => null,
+    start: async () => ['chef', 'chef', 'saboteur', 'stoic'],
+    complete: async () => null,
+    tick: async () => {},
+  };
+  const isolated = createServer({ port: 0, chain });
+  await isolated.listen();
+  const origin = `http://127.0.0.1:${isolated.httpServer.address().port}`;
+  const allowed = await signIn(origin, allowedWallet);
+  const rejected = await signIn(origin, rejectedWallet);
+  const host = await connect(origin);
+  const hostSession = next(host, (message) => message.type === 'session');
+  const hostState = next(host, (message) => message.type === 'state');
+  send(host, { type: 'create', name: 'Allowed Host', paid: true, authToken: allowed.token });
+  const [, room] = await Promise.all([hostSession, hostState]);
+  assert.equal(room.state.mode, 'fuji');
+
+  const guest = await connect(origin);
+  const denied = next(guest, (message) => message.type === 'error');
+  send(guest, { type: 'join', name: 'Not Invited', code: room.state.code, paid: true, authToken: rejected.token });
+  assert.match((await denied).message, /allowlisted/);
+
+  await closeAll([host, guest]);
+  await isolated.close();
 });
 
 test('demo create fills four seats with clearly labeled bots and sends a private session', async () => {
@@ -224,6 +397,17 @@ test('malformed message types and an oversized payload are rejected without taki
   assert.equal(code, 1009);
   const response = await fetch(`${base}/healthz`);
   assert.equal(response.status, 200);
+});
+
+test('a message flood closes only the abusive socket and leaves the server healthy', async () => {
+  const socket = await connect();
+  const closed = once(socket, 'close');
+  for (let index = 0; index < 61; index++) send(socket, { type: 'not-a-real-message' });
+  const [code] = await closed;
+  assert.equal(code, 1008);
+  assert.equal((await fetch(`${base}/healthz`)).status, 200);
+  const healthy = await connect();
+  await close(healthy);
 });
 
 test('resume requires the private token, rotates it, and restores the existing player state', async () => {

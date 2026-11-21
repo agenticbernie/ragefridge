@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:browser": "node scripts/browser-smoke.js",
+    "verify:fuji": "node scripts/verify-fuji.js"
   },
   "dependencies": {
+    "ethers": "6.17.0",
     "ws": "8.23.0"
   }
 }

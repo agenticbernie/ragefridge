@@ -73,6 +73,10 @@ export class Game {
   start(id, roles) {
     if (id !== this.hostId) return 'Only the host can start the match.';
     if (!this.canStart()) return 'The lobby needs four connected seats before it can start.';
+    if (this.paid) this.audit = {
+      roster: this.players.map(({ id, name, wallet }) => ({ id, name, wallet })),
+      hostId: this.hostId, roles: roles.slice(), inputs: [],
+    };
     this.players.forEach((player, i) => { player.role = roles[i]; });
     this.phase = 'roles';
     this.roleRemaining = rules.roleSeconds;
@@ -83,7 +87,8 @@ export class Game {
   disconnect(id, now) {
     const player = this.getPlayer(id);
     if (!player) return;
-    if (this.phase === 'lobby') {
+    if (this.phase !== 'ended') this.audit?.inputs.push({ type: 'disconnect', id, now });
+    if (this.phase === 'lobby' && !this.chain) {
       this.players = this.players.filter((seat) => seat !== player);
       if (id === this.hostId) this.hostId = this.players.find((seat) => !seat.bot)?.id ?? null;
     } else {
@@ -94,7 +99,8 @@ export class Game {
 
   reconnect(id, now) {
     const player = this.getPlayer(id);
-    if (!player || player.connected || this.phase === 'lobby') return false;
+    if (!player || player.connected || (this.phase === 'lobby' && !this.chain)) return false;
+    if (this.phase !== 'ended') this.audit?.inputs.push({ type: 'reconnect', id, now });
     if (this.phase !== 'ended' && now - player.disconnectedAt > rules.disconnectGrace * 1000) {
       this.eliminate(player, 'disconnect');
     }
@@ -135,6 +141,7 @@ export class Game {
         player.restReady = t + rules.restCooldown;
         player.restUntil = t + rules.restSeconds;
         this.record('rest', `${player.name} takes a sip of water.`, { actor: id });
+        this.audit?.inputs.push({ type: 'submit', id, message: { action: 'rest' } });
         return null;
       }
       case 'deflect': {
@@ -143,6 +150,7 @@ export class Game {
         player.deflectReady = t + rules.deflectCooldown;
         player.shieldUntil = t + rules.deflectSeconds;
         this.record('deflect', `${player.name} raises a pan shield.`, { actor: id });
+        this.audit?.inputs.push({ type: 'submit', id, message: { action: 'deflect' } });
         return null;
       }
       case 'roast':
@@ -164,6 +172,8 @@ export class Game {
         player.scoredReady = t + rules.scoredCooldown;
         player.pending = true;
         this.queue.push({ action: message.action, tier, player, target, ungraded });
+        this.audit?.inputs.push({ type: 'submit', id, message: { action: message.action,
+          tier, target: target.id, ...(ungraded ? { text: '[ungraded]' } : {}) } });
         return null;
       }
       default:
@@ -219,6 +229,7 @@ export class Game {
 
   tick(now) {
     if (this.phase === 'lobby' || this.phase === 'ended') return;
+    this.audit?.inputs.push({ type: 'tick', now });
     for (const player of this.players) {
       if (!player.connected && now - player.disconnectedAt > rules.disconnectGrace * 1000) {
         this.eliminate(player, 'disconnect');
@@ -334,11 +345,15 @@ export class Game {
       you.receipts = player.receipts;
       you.stoicPeakOK = player.peakBP <= units(rules.stoicMaxBP);
     }
+    const chainReady = !this.paid || this.chain?.state === 'LOCKED' ||
+      (this.chain?.state === 'FUNDING' && this.chain.depositedCount === rules.seats && this.chain.readyCount === rules.seats);
     return {
-      code: this.code, phase: this.phase, demo: this.demo, mode: this.demo ? 'demo' : 'free',
-      hostId: this.hostId, canStart: id === this.hostId && this.canStart(),
+      code: this.code, phase: this.phase, demo: this.demo, mode: this.paid ? 'fuji' : this.demo ? 'demo' : 'free',
+      ...(this.chain ? { chain: this.chain } : {}),
+      hostId: this.hostId, canStart: id === this.hostId && this.canStart() && !this.starting && chainReady,
       players: this.players.map((seat) => ({
         id: seat.id, name: seat.name, alive: seat.alive, bpBand: bpBand(seat), bot: seat.bot, connected: seat.connected,
+        ...(seat.wallet ? { wallet: seat.wallet } : {}),
         protected: seat.incoming.filter((at) => t + 1 - at < rules.targetWindow).length >= rules.targetCap,
         ...(this.phase === 'ended' ? { role: seat.role } : {}),
       })),
