@@ -3,8 +3,9 @@ import { rules } from './game.js';
 import { JsonChainStore } from './chain-store.js';
 
 export const FUJI_CHAIN_ID = 43113;
-export const DEFAULT_TOKEN_ADDRESS = '0x5c6c67f33ad8cf10cc09d59425d2c9bba3b8fe35';
-export const DEFAULT_ESCROW_ADDRESS = '0xfb91ddbe90fbf0250e72d7ccb11f0e1d8669ed4f';
+// Confirmed Fuji deployment; receipts and read-only verification: docs/deployments/fuji.json.
+export const DEFAULT_TOKEN_ADDRESS = '0xdb327028a1f07e6aac4b95b3cf23bc4239dc62fc';
+export const DEFAULT_ESCROW_ADDRESS = '0xcbb37be2c4df698fcbbb41b44a3d1cbbefef7943';
 export const DEFAULT_STAKE = '10000000000000000000';
 const STORE_TERMINAL = new Set(['settled', 'refundable']);
 const STATE = Object.freeze({ none: 0, funding: 1, locked: 2, active: 3, resultPending: 4, settled: 5, refundable: 6 });

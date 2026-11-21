@@ -1,6 +1,6 @@
 # Fuji operator runbook
 
-This is a test-credit deployment procedure, not live deployment evidence. Keep `CHAIN_ENABLED=false` until the deployment, operator configuration, persistent storage and end-to-end claims have been verified. Never use production funds or production wallet keys.
+This is a test-credit deployment procedure. The operator's deployed token/escrow, successful receipts and read-only runtime/configuration verification are recorded in [deployments/fuji.json](deployments/fuji.json). Source verification is operator-reported; live four-wallet gameplay remains unverified. Follow [RENDER-DEPLOYMENT.md](RENDER-DEPLOYMENT.md) to host the web app with these contracts. Keep `CHAIN_ENABLED=false` until operator configuration and persistent storage are ready, then validate with an explicit test-wallet allowlist. Never use production funds or production wallet keys.
 
 ## 1. Build and simulate locally
 
@@ -57,4 +57,4 @@ For uncertain transactions, inspect the existing hash and receipt first; do not 
 
 ## Still required before release
 
-Verified live deployment and four-wallet evidence, independent security review, distributed key custody, production monitoring/backup drills, ERC-4337/paymaster integration if promised, and the product/privacy/legal gates in `IMPLEMENTATION-STATUS.md` remain outstanding.
+Live four-wallet gameplay/claim evidence, independently checked explorer source verification, independent security review, distributed key custody, production monitoring/backup drills, ERC-4337/paymaster integration if promised, and the product/privacy/legal gates in `IMPLEMENTATION-STATUS.md` remain outstanding. Deployed runtime/configuration and creation receipts have been checked separately; they do not establish these release gates.

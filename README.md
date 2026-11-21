@@ -46,6 +46,8 @@ Submitted transaction hashes are saved in browser local storage when available a
 
 ### Operator tools
 
-See [the Fuji runbook](docs/FUJI-OPERATIONS.md) for simulation-first deployment and read-only bytecode/configuration verification. No deployment has been performed by these tools in this workspace.
+The operator deployed the Fuji test token at `0xdB327028a1F07E6aAC4B95b3cF23bC4239Dc62fc` and escrow at `0xCbB37BE2c4df698FcBBb41B44A3d1cbBeFEF7943`. Creation receipts, runtime bytecode and public configuration were checked over Fuji RPC; see [the deployment record](docs/deployments/fuji.json). Explorer source verification is operator-reported; live four-wallet gameplay remains unverified.
+
+Follow [the Render deployment guide](docs/RENDER-DEPLOYMENT.md) to host the web app and configure this deployment. See [the Fuji runbook](docs/FUJI-OPERATIONS.md) for simulation-first deployment and read-only bytecode/configuration verification. Chain mode stays disabled by default; enabling it requires operator keys and persistent storage.
 
 The server bounds room attempts across sockets (60 per minute per socket IP), rooms (1,000), and WebSocket connections (512 overall, 32 per socket IP). Limits are single-process and do not trust forwarded headers. Behind a reverse proxy, clients may share its IP: enforce appropriate public limits at the proxy and review these defaults before opening access.

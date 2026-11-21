@@ -1,0 +1,37 @@
+{
+  "chainId": 43113,
+  "network": "Avalanche Fuji C-Chain",
+  "deploymentBlock": 61431307,
+  "token": "0xdB327028a1F07E6aAC4B95b3cF23bC4239Dc62fc",
+  "escrow": "0xCbB37BE2c4df698FcBBb41B44A3d1cbBeFEF7943",
+  "creator": "0xD7A9788d08140237abBc482BF7981647Eb0419A1",
+  "signers": [
+    "0x9DDCeb36F344b885Fe9D49fB5518a4643d4fafB6",
+    "0x823C7C16eE96b840A83b9bC0612a7C80ee10B632",
+    "0xBf3Ce627AF783d46fcC9207EeF4B24EfB03127Ce"
+  ],
+  "deploymentTransactions": {
+    "token": "0xcaa4a8e8ef7448e3946f9217764e7b2747cfb3d3239d8f4359fe63e2526d1538",
+    "escrow": "0x0f620788e2ed97aae2f506e2516ba9be526db56290de0963ff9853536b716891"
+  },
+  "receiptVerification": {
+    "tokenStatus": 1,
+    "escrowStatus": 1,
+    "contractAddressesAndBlockMatched": true
+  },
+  "runtimeVerification": {
+    "command": "node scripts/verify-fuji.js",
+    "blockNumber": 61431567,
+    "verifiedAt": "2026-11-21T15:52:56.563Z",
+    "tokenCodeHash": "0xecb2a71d69549aa62db9cc3ed025086b97657910f2fea1364299717e6271b3d2",
+    "escrowCodeHash": "0xf12ff14509607f4f69d70e2c64d107f2ea03e6dc2fca0bf01a56cc847d2403ca",
+    "localRuntimeMatchedExceptCompilerDeclaredImmutables": true,
+    "tokenCreatorAndSignerConfigurationMatched": true
+  },
+  "sourceVerification": {
+    "status": "reported-by-operator",
+    "independentlyCheckedOnExplorer": false
+  },
+  "realValueEnabled": false,
+  "liveFourWalletGameplayVerified": false
+}

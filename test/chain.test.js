@@ -63,7 +63,7 @@ test('rules hash and ordered event root are stable but bind distinct event logs'
 
 test('disabled chain coordinator stays read-only and does not accept wallet allowlisting', async () => {
   const coordinator = await createChainCoordinator({ env: { CHAIN_ENABLED: 'false' } });
-  assert.deepEqual(coordinator.publicConfig(), { enabled: false, chainId: 43113, token: '0x5c6c67f33ad8cf10cc09d59425d2c9bba3b8fe35', escrow: '0xfb91ddbe90fbf0250e72d7ccb11f0e1d8669ed4f', stake: '10000000000000000000', inviteRequired: false });
+  assert.deepEqual(coordinator.publicConfig(), { enabled: false, chainId: 43113, token: '0xdb327028a1f07e6aac4b95b3cf23bc4239dc62fc', escrow: '0xcbb37be2c4df698fcbbb41b44a3d1cbbefef7943', stake: '10000000000000000000', inviteRequired: false });
   assert.equal(coordinator.isAllowedPlayer('0x0000000000000000000000000000000000000001'), false);
   await coordinator.close();
 });
